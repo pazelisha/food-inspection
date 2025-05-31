@@ -191,71 +191,53 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
             return;
         }
 
-        // First, let's check what tasks exist in the collection (without filters)
-        db.collection("tasks")
-                .addSnapshotListener(new EventListener<QuerySnapshot>() {
-                    @Override
-                    public void onEvent(QuerySnapshot allSnapshots, FirebaseFirestoreException e) {
-                        if (e != null) {
-                            Log.e(TAG, "loadTasks: Error listening to ALL tasks", e);
-                            return;
-                        }
-
-                        if (allSnapshots != null) {
-                            Log.d(TAG, "loadTasks: Total tasks in collection: " + allSnapshots.size());
-                            for (DocumentSnapshot doc : allSnapshots.getDocuments()) {
-                                String docInspectorId = doc.getString("inspectorId");
-                                String docStatus = doc.getString("status");
-                                Log.d(TAG, "loadTasks: Task " + doc.getId() +
-                                        " - inspectorId: '" + docInspectorId +
-                                        "', status: '" + docStatus +
-                                        "', matches current user: " + uid.equals(docInspectorId));
-                            }
-                        }
-                    }
-                });
-
-        // Now the filtered query
         db.collection("tasks")
                 .whereEqualTo("inspectorId", uid)
                 .whereEqualTo("status", "open")
-                .addSnapshotListener(new EventListener<QuerySnapshot>() {
-                    @Override
-                    public void onEvent(QuerySnapshot snapshots, FirebaseFirestoreException e) {
-                        if (e != null) {
-                            Log.e(TAG, "loadTasks: Error listening to tasks", e);
-                            return;
-                        }
+                .addSnapshotListener((snapshots, e) -> {
+                    if (e != null) {
+                        Log.e(TAG, "loadTasks: Error listening to tasks", e);
+                        return;
+                    }
 
-                        if (snapshots == null) {
-                            Log.w(TAG, "loadTasks: Snapshots is null");
-                            return;
-                        }
+                    if (snapshots == null) {
+                        Log.w(TAG, "loadTasks: Snapshots is null");
+                        return;
+                    }
 
-                        Log.d(TAG, "loadTasks: Received " + snapshots.size() + " task documents");
+                    Log.d(TAG, "loadTasks: Received " + snapshots.size() + " task documents");
 
-                        List<Task> list = new ArrayList<>();
-                        for (DocumentSnapshot doc : snapshots.getDocuments()) {
-                            try {
-                                Task t = doc.toObject(Task.class);
-                                if (t != null) {
-                                    t.setId(doc.getId());
-                                    list.add(t);
-                                    Log.d(TAG, "loadTasks: Added task: " + doc.getId());
-                                } else {
-                                    Log.w(TAG, "loadTasks: Failed to convert document to Task: " + doc.getId());
-                                }
-                            } catch (Exception ex) {
-                                Log.e(TAG, "loadTasks: Error processing task document " + doc.getId(), ex);
+                    List<Task> list = new ArrayList<>();
+
+                    for (DocumentSnapshot doc : snapshots.getDocuments()) {
+                        try {
+                            Task t = doc.toObject(Task.class);
+                            if (t != null) {
+                                t.setId(doc.getId());
+
+                                // Fetch restaurant name from 'locations' collection
+                                String locationId = t.getLocationId();
+                                db.collection("locations").document(locationId).get()
+                                        .addOnSuccessListener(locationDoc -> {
+                                            if (locationDoc.exists()) {
+                                                t.setLocationName(locationDoc.getString("name"));
+                                            } else {
+                                                t.setLocationName("Unknown Location");
+                                            }
+
+                                            list.add(t);
+                                            taskAdapter.updateTasks(new ArrayList<>(list));  // Update adapter after each task is ready
+                                        });
+                            } else {
+                                Log.w(TAG, "loadTasks: Failed to convert document to Task: " + doc.getId());
                             }
+                        } catch (Exception ex) {
+                            Log.e(TAG, "loadTasks: Error processing task document " + doc.getId(), ex);
                         }
-
-                        Log.d(TAG, "loadTasks: Total tasks loaded: " + list.size());
-                        Log.d(TAG, "loadTasks: Task list: " + list.toString());
-                        taskAdapter.updateTasks(list);
                     }
                 });
     }
+
 
     private void onTaskClicked(Task task) {
         Log.d(TAG, "onTaskClicked: Task clicked: " + task.getId());
