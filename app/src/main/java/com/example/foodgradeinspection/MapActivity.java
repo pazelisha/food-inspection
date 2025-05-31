@@ -117,7 +117,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                                 Double latObj = doc.getDouble("lat");
                                 Double lngObj = doc.getDouble("lng");
                                 String status = doc.getString("status");
-                                Double ratingObj = doc.getDouble("healthRating");
+                                String ratingObj = doc.getString("healthRating");
                                 String name = doc.getString("name");
 
                                 // Check for null values
@@ -128,7 +128,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
                                 double lat = latObj;
                                 double lng = lngObj;
-                                double rating = ratingObj != null ? ratingObj : 0.0;
+                                String rating = ratingObj != null ? ratingObj : "N";
 
                                 Log.d(TAG, "loadLocations: Adding marker - Name: " + name +
                                         ", Lat: " + lat + ", Lng: " + lng +
@@ -175,12 +175,32 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                 });
     }
 
-    private float getColorForRating(double rating) {
-        // scale 1.0–5.0 onto 0° (red)–120° (green)
-        float color = (float) ((rating - 1) / 4 * 120);
-        Log.d(TAG, "getColorForRating: Rating " + rating + " -> Color hue " + color);
+    private float getColorForRating(String rating) {
+        float color;
+
+        switch (rating.toUpperCase()) {
+            case "A":
+                color = 120f; // Green - healthiest
+                break;
+            case "B":
+                color = 90f;  // Yellow-green
+                break;
+            case "C":
+                color = 45f;  // Orange-yellow
+                break;
+            case "D":
+                color = 0f;   // Red - worst
+                break;
+            case "N":
+            default:
+                color = 240f; // Blue or greyish tone for "Not ranked"
+                break;
+        }
+
+        Log.d(TAG, "getColorForLetterRating: Rating " + rating + " -> Color hue " + color);
         return color;
     }
+
 
     private void loadTasks() {
         String uid = mAuth.getUid();
@@ -259,10 +279,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     private void onTaskClicked(Task task) {
         Log.d(TAG, "onTaskClicked: Task clicked: " + task.getId());
-        /*
         Intent i = new Intent(this, InspectionFormActivity.class);
         i.putExtra("taskId", task.getId());
         i.putExtra("locationId", task.getLocationId());
-        startActivity(i);*/
+        startActivity(i);
     }
 }
