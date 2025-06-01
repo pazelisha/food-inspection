@@ -2,8 +2,12 @@ package com.example.foodgradeinspection;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
+import android.widget.ImageButton;
+import android.widget.PopupMenu;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -33,6 +37,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private FirebaseAuth mAuth;
     private RecyclerView tasksRecycler;
     private TaskAdapter taskAdapter;
+    private ImageButton filterButton;
+    private ImageButton refreshButton;
+    private String currentFilter = "open"; // Default filter
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,7 +72,47 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         taskAdapter = new TaskAdapter(new ArrayList<>(), this::onTaskClicked);
         tasksRecycler.setAdapter(taskAdapter);
 
+        // Setup filter and refresh buttons
+        setupButtons();
+
         loadTasks();
+    }
+
+    private void setupButtons() {
+        filterButton = findViewById(R.id.filter_button);
+        refreshButton = findViewById(R.id.refresh_button);
+
+        // Setup filter button click listener
+        filterButton.setOnClickListener(v -> showFilterMenu());
+
+        // Setup refresh button click listener
+        refreshButton.setOnClickListener(v -> {
+            Log.d(TAG, "Refresh button clicked");
+            loadTasks();
+        });
+    }
+
+    private void showFilterMenu() {
+        PopupMenu popup = new PopupMenu(this, filterButton);
+        popup.getMenuInflater().inflate(R.menu.filter_menu, popup.getMenu());
+
+        popup.setOnMenuItemClickListener(item -> {
+            int itemId = item.getItemId();
+            if (itemId == R.id.filter_open) {
+                currentFilter = "open";
+                Log.d(TAG, "Filter changed to: open");
+            } else if (itemId == R.id.filter_completed) {
+                currentFilter = "completed";
+                Log.d(TAG, "Filter changed to: completed");
+            } else if (itemId == R.id.filter_all) {
+                currentFilter = "all";
+                Log.d(TAG, "Filter changed to: all");
+            }
+            loadTasks();
+            return true;
+        });
+
+        popup.show();
     }
 
     @Override
@@ -201,66 +248,199 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         return color;
     }
 
-
     private void loadTasks() {
         String uid = mAuth.getUid();
-        Log.d(TAG, "loadTasks: Loading tasks for user: " + uid);
+        Log.d(TAG, "loadTasks: Loading tasks for user: " + uid + " with filter: " + currentFilter);
 
         if (uid == null) {
             Log.w(TAG, "loadTasks: User ID is null, cannot load tasks");
             return;
         }
 
-        db.collection("tasks")
-                .whereEqualTo("inspectorId", uid)
-                .whereEqualTo("status", "open")
-                .addSnapshotListener((snapshots, e) -> {
-                    if (e != null) {
-                        Log.e(TAG, "loadTasks: Error listening to tasks", e);
-                        return;
-                    }
+        // Build query based on current filter
+        var query = db.collection("tasks")
+                .whereEqualTo("inspectorId", uid);
 
-                    if (snapshots == null) {
-                        Log.w(TAG, "loadTasks: Snapshots is null");
-                        return;
-                    }
+        if (!currentFilter.equals("all")) {
+            query = query.whereEqualTo("status", currentFilter);
+        }
 
-                    Log.d(TAG, "loadTasks: Received " + snapshots.size() + " task documents");
+        query.addSnapshotListener((snapshots, e) -> {
+            if (e != null) {
+                Log.e(TAG, "loadTasks: Error listening to tasks", e);
+                return;
+            }
 
-                    List<Task> list = new ArrayList<>();
+            if (snapshots == null) {
+                Log.w(TAG, "loadTasks: Snapshots is null");
+                return;
+            }
 
-                    for (DocumentSnapshot doc : snapshots.getDocuments()) {
-                        try {
-                            Task t = doc.toObject(Task.class);
-                            if (t != null) {
-                                t.setId(doc.getId());
+            Log.d(TAG, "loadTasks: Received " + snapshots.size() + " task documents");
 
-                                // Fetch restaurant name from 'locations' collection
-                                String locationId = t.getLocationId();
-                                db.collection("locations").document(locationId).get()
-                                        .addOnSuccessListener(locationDoc -> {
-                                            if (locationDoc.exists()) {
-                                                t.setLocationName(locationDoc.getString("name"));
-                                            } else {
-                                                t.setLocationName("Unknown Location");
-                                            }
+            // If no tasks found, clear the list immediately
+            if (snapshots.isEmpty()) {
+                Log.d(TAG, "loadTasks: No tasks found, clearing adapter");
+                taskAdapter.updateTasks(new ArrayList<>());
+                return;
+            }
 
+            List<Task> list = new ArrayList<>();
+            final int totalTasks = snapshots.size();
+            final int[] processedTasks = {0}; // Use array to modify in lambda
+
+            for (DocumentSnapshot doc : snapshots.getDocuments()) {
+                try {
+                    Task t = doc.toObject(Task.class);
+                    if (t != null) {
+                        t.setId(doc.getId());
+
+                        // Fetch restaurant name from 'locations' collection
+                        String locationId = t.getLocationId();
+                        if (locationId != null && !locationId.isEmpty()) {
+                            db.collection("locations").document(locationId).get()
+                                    .addOnSuccessListener(locationDoc -> {
+                                        if (locationDoc.exists()) {
+                                            t.setLocationName(locationDoc.getString("name"));
+                                        } else {
+                                            t.setLocationName("Unknown Location");
+                                        }
+
+                                        String status = t.getStatus();
+                                        if (status != null && !status.isEmpty()) {
+                                            status = status.substring(0, 1).toUpperCase() + status.substring(1).toLowerCase();
+                                        }
+                                        t.setStatus(status);
+
+
+                                        synchronized (list) {
                                             list.add(t);
-                                            taskAdapter.updateTasks(new ArrayList<>(list));  // Update adapter after each task is ready
-                                        });
-                            } else {
-                                Log.w(TAG, "loadTasks: Failed to convert document to Task: " + doc.getId());
+                                            processedTasks[0]++;
+
+                                            // Update adapter only when all tasks are processed
+                                            if (processedTasks[0] == totalTasks) {
+                                                Log.d(TAG, "loadTasks: All tasks processed, updating adapter with " + list.size() + " tasks");
+                                                taskAdapter.updateTasks(new ArrayList<>(list));
+                                            }
+                                        }
+                                    })
+                                    .addOnFailureListener(ex -> {
+                                        Log.e(TAG, "loadTasks: Failed to fetch location for task " + doc.getId(), ex);
+                                        t.setLocationName("Unknown Location");
+
+                                        synchronized (list) {
+                                            list.add(t);
+                                            processedTasks[0]++;
+
+                                            // Update adapter only when all tasks are processed
+                                            if (processedTasks[0] == totalTasks) {
+                                                Log.d(TAG, "loadTasks: All tasks processed, updating adapter with " + list.size() + " tasks");
+                                                taskAdapter.updateTasks(new ArrayList<>(list));
+                                            }
+                                        }
+                                    });
+                        } else {
+                            // If no locationId, add task immediately
+                            t.setLocationName("Unknown Location");
+                            synchronized (list) {
+                                list.add(t);
+                                processedTasks[0]++;
+
+                                if (processedTasks[0] == totalTasks) {
+                                    Log.d(TAG, "loadTasks: All tasks processed, updating adapter with " + list.size() + " tasks");
+                                    taskAdapter.updateTasks(new ArrayList<>(list));
+                                }
                             }
-                        } catch (Exception ex) {
-                            Log.e(TAG, "loadTasks: Error processing task document " + doc.getId(), ex);
+                        }
+                    } else {
+                        Log.w(TAG, "loadTasks: Failed to convert document to Task: " + doc.getId());
+                        synchronized (list) {
+                            processedTasks[0]++;
+                            if (processedTasks[0] == totalTasks) {
+                                Log.d(TAG, "loadTasks: All tasks processed, updating adapter with " + list.size() + " tasks");
+                                taskAdapter.updateTasks(new ArrayList<>(list));
+                            }
                         }
                     }
-                });
+                } catch (Exception ex) {
+                    Log.e(TAG, "loadTasks: Error processing task document " + doc.getId(), ex);
+                    synchronized (list) {
+                        processedTasks[0]++;
+                        if (processedTasks[0] == totalTasks) {
+                            Log.d(TAG, "loadTasks: All tasks processed, updating adapter with " + list.size() + " tasks");
+                            taskAdapter.updateTasks(new ArrayList<>(list));
+                        }
+                    }
+                }
+            }
+        });
     }
 
-
     private void onTaskClicked(Task task) {
-        Log.d(TAG, "onTaskClicked: Task clicked: " + task.getId());
+        Log.d(TAG, "onTaskClicked: Task clicked: " + task.getId() + " with status: " + task.getStatus());
+
+        // Check if task is open and map is ready
+        if ("Open".equalsIgnoreCase(task.getStatus()) && mMap != null) {
+            // Get location coordinates and animate to them
+            String locationId = task.getLocationId();
+            if (locationId != null && !locationId.isEmpty()) {
+                db.collection("locations").document(locationId).get()
+                        .addOnSuccessListener(locationDoc -> {
+                            if (locationDoc.exists()) {
+                                Double latObj = locationDoc.getDouble("lat");
+                                Double lngObj = locationDoc.getDouble("lng");
+
+                                if (latObj != null && lngObj != null) {
+                                    LatLng targetLocation = new LatLng(latObj, lngObj);
+
+                                    // Animate camera to location with smooth pan
+                                    mMap.animateCamera(
+                                            CameraUpdateFactory.newLatLngZoom(targetLocation, 16f),
+                                            1000, // Animation duration in milliseconds
+                                            new GoogleMap.CancelableCallback() {
+                                                @Override
+                                                public void onFinish() {
+                                                    Log.d(TAG, "onTaskClicked: Camera animation completed");
+                                                    // Wait 1 second after animation completes, then open form
+                                                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                                        openInspectionForm(task);
+                                                    }, 1000);
+                                                }
+
+                                                @Override
+                                                public void onCancel() {
+                                                    Log.d(TAG, "onTaskClicked: Camera animation cancelled");
+                                                    // Still open form even if animation is cancelled
+                                                    openInspectionForm(task);
+                                                }
+                                            }
+                                    );
+                                } else {
+                                    Log.w(TAG, "onTaskClicked: Location coordinates not found, opening form directly");
+                                    openInspectionForm(task);
+                                }
+                            } else {
+                                Log.w(TAG, "onTaskClicked: Location document not found, opening form directly");
+                                openInspectionForm(task);
+                            }
+                        })
+                        .addOnFailureListener(ex -> {
+                            Log.e(TAG, "onTaskClicked: Failed to fetch location coordinates", ex);
+                            openInspectionForm(task);
+                        });
+            } else {
+                Log.w(TAG, "onTaskClicked: No location ID found, opening form directly");
+                openInspectionForm(task);
+            }
+        } else {
+            // For non-open tasks or when map is not ready, open form directly
+            Log.d(TAG, "onTaskClicked: Task is not open or map not ready, opening form directly");
+            openInspectionForm(task);
+        }
+    }
+
+    private void openInspectionForm(Task task) {
+        Log.d(TAG, "openInspectionForm: Opening form for task: " + task.getId());
         Intent i = new Intent(this, InspectionFormActivity.class);
         i.putExtra("taskId", task.getId());
         i.putExtra("locationId", task.getLocationId());
