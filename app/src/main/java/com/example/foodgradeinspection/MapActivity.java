@@ -1,6 +1,8 @@
 package com.example.foodgradeinspection;
 
 import android.content.Intent;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -17,9 +19,16 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
@@ -182,14 +191,21 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                                         ", Status: " + status + ", Rating: " + rating);
 
                                 LatLng pos = new LatLng(lat, lng);
-                                float hue = status != null && status.equals("open")
-                                        ? BitmapDescriptorFactory.HUE_AZURE
-                                        : getColorForRating(rating);
 
-                                mMap.addMarker(new MarkerOptions()
-                                        .position(pos)
-                                        .title(name != null ? name : "Unknown Location")
-                                        .icon(BitmapDescriptorFactory.defaultMarker(hue)));
+                                // Create custom marker with letter grade
+                                if (status != null && status.equals("open")) {
+                                    // For open status, use azure color without letter
+                                    mMap.addMarker(new MarkerOptions()
+                                            .position(pos)
+                                            .title(name != null ? name : "Unknown Location")
+                                            .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE)));
+                                } else {
+                                    // For others, create custom marker with letter grade
+                                    mMap.addMarker(new MarkerOptions()
+                                            .position(pos)
+                                            .title(name != null ? name : "Unknown Location")
+                                            .icon(createCustomMarkerWithLetter(rating)));
+                                }
 
                                 markersAdded++;
 
@@ -220,6 +236,108 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
                         }
                     }
                 });
+    }
+
+    private BitmapDescriptor createCustomMarkerWithLetter(String rating) {
+        // Get the base color for the rating (Your existing call)
+        float hue = getColorForRating(rating);
+
+        // Original base size reference
+        int size = 100;
+
+        // Pin shape dimensions (derived from 'size')
+        float headRadius = size * 0.38f; // Radius of the pin's "head"
+        float headCenterX = size / 2f;
+
+        // Position head in the upper part of a taller canvas
+        float headTopPadding = size * 0.02f;
+        float headCenterY = headTopPadding + headRadius;
+
+        float tailVisibleHeight = size * 0.45f; // Visual height of the tail below the head
+        float neckWidthRatio = 0.75f; // Controls how "pinched" the neck is (0.0-1.0)
+
+        // Calculate Y-coordinates for the pin tip and overall bitmap height
+        float tipBaseY = headCenterY + headRadius; // Y where head bottom meets tail top
+        float tipActualY = tipBaseY + tailVisibleHeight; // Y of the very tip
+
+        int bitmapWidth = size;
+        int bitmapHeight = (int) Math.ceil(tipActualY + size * 0.05f); // Add some bottom padding
+        // Recalculate actual tipY based on final bitmapHeight to ensure it's at the padded bottom
+        tipActualY = bitmapHeight - (size * 0.05f);
+
+        // Create a bitmap to draw on (now taller)
+        Bitmap bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+
+        // Create paint for the pin body (using your original circlePaint logic)
+        Paint circlePaint = new Paint();
+        circlePaint.setAntiAlias(true);
+        float[] hsv = {hue, 1.0f, 0.85f}; // Slightly adjusted brightness for better pin appearance
+        int color = Color.HSVToColor(hsv);
+        circlePaint.setColor(color);
+        circlePaint.setStyle(Paint.Style.FILL); // Ensure it's fill for the path
+
+        // Define the pin's path
+        Path pinPath = new Path();
+        RectF headOval = new RectF(
+                headCenterX - headRadius,
+                headCenterY - headRadius,
+                headCenterX + headRadius,
+                headCenterY + headRadius
+        );
+
+        // Calculate neck connection points
+        float neckXOffset = headRadius * neckWidthRatio;
+        // Ensure argument for sqrt is non-negative (can happen if neckWidthRatio > 1, though clamped by logic)
+        float neckYOffsetValInsideSqrt = (headRadius * headRadius) - (neckXOffset * neckXOffset);
+        float neckYOffset = (float) Math.sqrt(Math.max(0, neckYOffsetValInsideSqrt));
+
+
+        float leftNeckX = headCenterX - neckXOffset;
+        float rightNeckX = headCenterX + neckXOffset;
+        float neckConnectionY = headCenterY + neckYOffset;
+
+        pinPath.moveTo(headCenterX, tipActualY); // Start at the tip
+        pinPath.lineTo(leftNeckX, neckConnectionY); // Line to left neck
+
+        // Arc for the head
+        float startAngleDeg = (float) Math.toDegrees(Math.atan2(neckConnectionY - headCenterY, leftNeckX - headCenterX));
+        float endAngleDeg = (float) Math.toDegrees(Math.atan2(neckConnectionY - headCenterY, rightNeckX - headCenterX));
+        float sweepAngleDeg = endAngleDeg - startAngleDeg;
+        if (sweepAngleDeg <= 0) { // Ensure Counter-Clockwise sweep for the top arc
+            sweepAngleDeg += 360;
+        }
+        pinPath.arcTo(headOval, startAngleDeg, sweepAngleDeg, false);
+
+        pinPath.close(); // Completes path by drawing line from right neck to tip
+
+        // Draw the pin shape (replaces your canvas.drawCircle)
+        canvas.drawPath(pinPath, circlePaint);
+
+        // Create paint for the text (Your original text paint setup)
+        Paint textPaint = new Paint();
+        textPaint.setAntiAlias(true);
+        textPaint.setColor(Color.BLACK);
+        textPaint.setTextSize(size * 0.4f);
+        textPaint.setFakeBoldText(true);
+        textPaint.setTextAlign(Paint.Align.CENTER);
+
+        // Calculate text position to center it in the pin's "head"
+        String letter = rating.toUpperCase();
+        Rect textBounds = new Rect();
+        textPaint.getTextBounds(letter, 0, letter.length(), textBounds);
+
+        float textX = headCenterX; // Text X is center of the head
+        // Adjust Y for proper vertical centering in the head
+        float textY = headCenterY - (textPaint.ascent() + textPaint.descent()) / 2f;
+
+        // Draw the letter (Your original text drawing)
+        canvas.drawText(letter, textX, textY, textPaint);
+
+        // Your original log
+        Log.d(TAG, "createCustomMarkerWithLetter: Created marker for rating " + rating);
+
+        return BitmapDescriptorFactory.fromBitmap(bitmap);
     }
 
     private float getColorForRating(String rating) {
@@ -380,7 +498,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         Log.d(TAG, "onTaskClicked: Task clicked: " + task.getId() + " with status: " + task.getStatus());
 
         // Check if task is open and map is ready
-        if ("Open".equalsIgnoreCase(task.getStatus()) && mMap != null) {
+        if ("Open".equalsIgnoreCase(task.getStatus()) || "Completed".equalsIgnoreCase(task.getStatus())&& mMap != null) {
             // Get location coordinates and animate to them
             String locationId = task.getLocationId();
             if (locationId != null && !locationId.isEmpty()) {
