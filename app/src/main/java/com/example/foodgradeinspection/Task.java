@@ -16,6 +16,7 @@ public class Task {
     private Double locationLat;
     private Double locationLng;
 
+    private Double score;
     // No-arg constructor required for Firestore
     public Task() {}
 
@@ -155,4 +156,12 @@ public class Task {
                 ", scheduledDate=" + scheduledDate +
                 '}';
     }
+
+    public String getSanitationGrade() {
+        if (score >= 9.0) return "A";
+        else if (score >= 8.0) return "B";
+        else if (score >= 7.0) return "C";
+        else return "D";
+    }
+
 }

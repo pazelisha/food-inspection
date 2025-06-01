@@ -58,7 +58,7 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         }
 
         public void bind(Task task, OnTaskClickListener listener) {
-            titleTV.setText(task.getLocationId()); // You may want to fetch location name separately
+            titleTV.setText(task.getLocationName() != null ? task.getLocationName() : task.getLocationId());
             statusTV.setText("Status: " + task.getStatus());
             itemView.setOnClickListener(v -> listener.onTaskClick(task));
         }
