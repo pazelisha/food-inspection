@@ -239,105 +239,72 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     }
 
     private BitmapDescriptor createCustomMarkerWithLetter(String rating) {
-        // Get the base color for the rating (Your existing call)
-        float hue = getColorForRating(rating);
 
-        // Original base size reference
-        int size = 100;
+        /* ----------- choose body colour ---------- */
+        float baseHue = getColorForRating(rating);   // your existing mapping
 
-        // Pin shape dimensions (derived from 'size')
-        float headRadius = size * 0.38f; // Radius of the pin's "head"
-        float headCenterX = size / 2f;
+        // If rating is “N” force saturation to 0 → grey.  Otherwise keep vivid colour.
+        float[] hsv = "N".equalsIgnoreCase(rating)
+                ? new float[]{0f, 0f, 0.70f}        // H is irrelevant when S = 0
+                : new float[]{baseHue, 1.0f, 0.85f}; // original vivid look
 
-        // Position head in the upper part of a taller canvas
-        float headTopPadding = size * 0.02f;
-        float headCenterY = headTopPadding + headRadius;
+        int pinColor = Color.HSVToColor(hsv);
 
-        float tailVisibleHeight = size * 0.45f; // Visual height of the tail below the head
-        float neckWidthRatio = 0.75f; // Controls how "pinched" the neck is (0.0-1.0)
+        /* ----------- draw the pin (same geometry you already had) ---------- */
+        int size = 100;                       // overall scale
+        float headR   = size * 0.38f;
+        float headCX  = size / 2f;
+        float headCY  = size * 0.02f + headR;
+        float tailH   = size * 0.45f;
+        float neckR   = 0.75f;
 
-        // Calculate Y-coordinates for the pin tip and overall bitmap height
-        float tipBaseY = headCenterY + headRadius; // Y where head bottom meets tail top
-        float tipActualY = tipBaseY + tailVisibleHeight; // Y of the very tip
+        float tipY    = headCY + headR + tailH;
+        int bmpH      = (int) Math.ceil(tipY + size * 0.05f);
+        tipY          = bmpH - size * 0.05f;
 
-        int bitmapWidth = size;
-        int bitmapHeight = (int) Math.ceil(tipActualY + size * 0.05f); // Add some bottom padding
-        // Recalculate actual tipY based on final bitmapHeight to ensure it's at the padded bottom
-        tipActualY = bitmapHeight - (size * 0.05f);
+        Bitmap bmp    = Bitmap.createBitmap(size, bmpH, Bitmap.Config.ARGB_8888);
+        Canvas cvs    = new Canvas(bmp);
 
-        // Create a bitmap to draw on (now taller)
-        Bitmap bitmap = Bitmap.createBitmap(bitmapWidth, bitmapHeight, Bitmap.Config.ARGB_8888);
-        Canvas canvas = new Canvas(bitmap);
+        Paint body    = new Paint(Paint.ANTI_ALIAS_FLAG);
+        body.setStyle(Paint.Style.FILL);
+        body.setColor(pinColor);
 
-        // Create paint for the pin body (using your original circlePaint logic)
-        Paint circlePaint = new Paint();
-        circlePaint.setAntiAlias(true);
-        float[] hsv = {hue, 1.0f, 0.85f}; // Slightly adjusted brightness for better pin appearance
-        int color = Color.HSVToColor(hsv);
-        circlePaint.setColor(color);
-        circlePaint.setStyle(Paint.Style.FILL); // Ensure it's fill for the path
+        Path pin      = new Path();
+        RectF head    = new RectF(headCX - headR, headCY - headR,
+                headCX + headR, headCY + headR);
 
-        // Define the pin's path
-        Path pinPath = new Path();
-        RectF headOval = new RectF(
-                headCenterX - headRadius,
-                headCenterY - headRadius,
-                headCenterX + headRadius,
-                headCenterY + headRadius
-        );
+        float neckDX  = headR * neckR;
+        float neckDY  = (float) Math.sqrt(headR * headR - neckDX * neckDX);
+        float neckY   = headCY + neckDY;
+        float leftNX  = headCX - neckDX;
+        float rightNX = headCX + neckDX;
 
-        // Calculate neck connection points
-        float neckXOffset = headRadius * neckWidthRatio;
-        // Ensure argument for sqrt is non-negative (can happen if neckWidthRatio > 1, though clamped by logic)
-        float neckYOffsetValInsideSqrt = (headRadius * headRadius) - (neckXOffset * neckXOffset);
-        float neckYOffset = (float) Math.sqrt(Math.max(0, neckYOffsetValInsideSqrt));
+        pin.moveTo(headCX, tipY);             // tip → left neck
+        pin.lineTo(leftNX, neckY);
 
+        float startDeg = (float) Math.toDegrees(Math.atan2(neckY - headCY, leftNX - headCX));
+        float endDeg   = (float) Math.toDegrees(Math.atan2(neckY - headCY, rightNX - headCX));
+        float sweepDeg = endDeg - startDeg;
+        if (sweepDeg <= 0) sweepDeg += 360;
 
-        float leftNeckX = headCenterX - neckXOffset;
-        float rightNeckX = headCenterX + neckXOffset;
-        float neckConnectionY = headCenterY + neckYOffset;
+        pin.arcTo(head, startDeg, sweepDeg, false); // head arc
+        pin.close();                                // right neck → tip
 
-        pinPath.moveTo(headCenterX, tipActualY); // Start at the tip
-        pinPath.lineTo(leftNeckX, neckConnectionY); // Line to left neck
+        cvs.drawPath(pin, body);
 
-        // Arc for the head
-        float startAngleDeg = (float) Math.toDegrees(Math.atan2(neckConnectionY - headCenterY, leftNeckX - headCenterX));
-        float endAngleDeg = (float) Math.toDegrees(Math.atan2(neckConnectionY - headCenterY, rightNeckX - headCenterX));
-        float sweepAngleDeg = endAngleDeg - startAngleDeg;
-        if (sweepAngleDeg <= 0) { // Ensure Counter-Clockwise sweep for the top arc
-            sweepAngleDeg += 360;
-        }
-        pinPath.arcTo(headOval, startAngleDeg, sweepAngleDeg, false);
+        /* ----------- draw the letter ---------- */
+        Paint txt = new Paint(Paint.ANTI_ALIAS_FLAG);
+        txt.setColor(Color.BLACK);
+        txt.setTextSize(size * 0.40f);
+        txt.setFakeBoldText(true);
+        txt.setTextAlign(Paint.Align.CENTER);
 
-        pinPath.close(); // Completes path by drawing line from right neck to tip
+        cvs.drawText(rating.toUpperCase(),
+                headCX,
+                headCY - (txt.ascent() + txt.descent()) / 2f,
+                txt);
 
-        // Draw the pin shape (replaces your canvas.drawCircle)
-        canvas.drawPath(pinPath, circlePaint);
-
-        // Create paint for the text (Your original text paint setup)
-        Paint textPaint = new Paint();
-        textPaint.setAntiAlias(true);
-        textPaint.setColor(Color.BLACK);
-        textPaint.setTextSize(size * 0.4f);
-        textPaint.setFakeBoldText(true);
-        textPaint.setTextAlign(Paint.Align.CENTER);
-
-        // Calculate text position to center it in the pin's "head"
-        String letter = rating.toUpperCase();
-        Rect textBounds = new Rect();
-        textPaint.getTextBounds(letter, 0, letter.length(), textBounds);
-
-        float textX = headCenterX; // Text X is center of the head
-        // Adjust Y for proper vertical centering in the head
-        float textY = headCenterY - (textPaint.ascent() + textPaint.descent()) / 2f;
-
-        // Draw the letter (Your original text drawing)
-        canvas.drawText(letter, textX, textY, textPaint);
-
-        // Your original log
-        Log.d(TAG, "createCustomMarkerWithLetter: Created marker for rating " + rating);
-
-        return BitmapDescriptorFactory.fromBitmap(bitmap);
+        return BitmapDescriptorFactory.fromBitmap(bmp);
     }
 
     private float getColorForRating(String rating) {
