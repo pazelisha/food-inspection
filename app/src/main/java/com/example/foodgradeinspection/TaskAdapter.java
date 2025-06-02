@@ -58,9 +58,30 @@ public class TaskAdapter extends RecyclerView.Adapter<TaskAdapter.TaskViewHolder
         }
 
         public void bind(Task task, OnTaskClickListener listener) {
-            titleTV.setText(task.getLocationName() != null ? task.getLocationName() : task.getLocationId());
-            statusTV.setText("Status: " + task.getStatus());
+
+            // ---------- title ----------
+            titleTV.setText(
+                    task.getLocationName() != null
+                            ? task.getLocationName()
+                            : task.getLocationId());
+
+            // ---------- status ----------
+            String statusRaw = task.getStatus() == null ? "" : task.getStatus().toLowerCase();
+            String statusCap = statusRaw.isEmpty()
+                    ? ""
+                    : Character.toUpperCase(statusRaw.charAt(0)) + statusRaw.substring(1);
+
+            statusTV.setText(statusCap);  // shows “Open” or “Completed”
+
+            if ("open".equals(statusRaw)) {
+                statusTV.setBackgroundResource(R.drawable.status_badge_open);
+            } else { // "completed" is the only other value you use
+                statusTV.setBackgroundResource(R.drawable.status_badge_completed);
+            }
+
+            // ---------- click ----------
             itemView.setOnClickListener(v -> listener.onTaskClick(task));
         }
+
     }
 }
