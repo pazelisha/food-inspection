@@ -1,112 +1,138 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FAFAFA"
-    android:padding="24dp">
+    android:background="#FAFAFA">
 
-    <LinearLayout
+    <!-- ────── Scrollable form ────── -->
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:gravity="center_horizontal">
+        android:layout_height="match_parent"
+        android:padding="24dp">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Health Inspection Form"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="24dp"
-            android:textColor="#000000" />
-
-        <!-- Cleanliness -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Cleanliness"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
-
-        <RadioGroup
-            android:id="@+id/cleanlinessGroup"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1" android:id="@+id/c1" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2" android:id="@+id/c2" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3" android:id="@+id/c3" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4" android:id="@+id/c4" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5" android:id="@+id/c5" />
-        </RadioGroup>
-
-        <!-- Food Storage -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Food Storage"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
-
-        <RadioGroup
-            android:id="@+id/foodStorageGroup"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1" android:id="@+id/f1" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2" android:id="@+id/f2" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3" android:id="@+id/f3" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4" android:id="@+id/f4" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5" android:id="@+id/f5" />
-        </RadioGroup>
-
-        <!-- Pest Control -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Pest Control"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp" />
-
-        <RadioGroup
-            android:id="@+id/pestControlGroup"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginBottom="16dp">
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1" android:id="@+id/p1" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2" android:id="@+id/p2" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3" android:id="@+id/p3" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4" android:id="@+id/p4" />
-            <RadioButton android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5" android:id="@+id/p5" />
-        </RadioGroup>
-
-        <!-- Comments -->
-        <EditText
-            android:id="@+id/commentsInput"
+        <!-- The form content must be a single child of ScrollView -->
+        <LinearLayout
+            android:id="@+id/form_container"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
-            android:hint="Additional comments (optional)"
-            android:gravity="top|start"
-            android:padding="12dp"
-            android:background="@android:drawable/editbox_background"
-            android:layout_marginBottom="24dp"
-            android:inputType="textMultiLine" />
-
-        <!-- Submit Button -->
-        <Button
-            android:id="@+id/submitButton"
-            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Submit"
-            android:backgroundTint="#4CAF50"
-            android:textColor="#FFFFFF"
-            android:paddingLeft="24dp"
-            android:paddingRight="24dp" />
-    </LinearLayout>
-</ScrollView>
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Health Inspection Form"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="24dp"
+                android:textColor="#000000" />
+
+            <!-- Cleanliness -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Cleanliness"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <RadioGroup
+                android:id="@+id/cleanlinessGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <RadioButton android:id="@+id/c1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1" />
+                <RadioButton android:id="@+id/c2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2" />
+                <RadioButton android:id="@+id/c3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3" />
+                <RadioButton android:id="@+id/c4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4" />
+                <RadioButton android:id="@+id/c5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5" />
+            </RadioGroup>
+
+            <!-- Food Storage -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Food Storage"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <RadioGroup
+                android:id="@+id/foodStorageGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <RadioButton android:id="@+id/f1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1" />
+                <RadioButton android:id="@+id/f2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2" />
+                <RadioButton android:id="@+id/f3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3" />
+                <RadioButton android:id="@+id/f4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4" />
+                <RadioButton android:id="@+id/f5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5" />
+            </RadioGroup>
+
+            <!-- Pest Control -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pest Control"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <RadioGroup
+                android:id="@+id/pestControlGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="16dp">
+
+                <RadioButton android:id="@+id/p1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1" />
+                <RadioButton android:id="@+id/p2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="2" />
+                <RadioButton android:id="@+id/p3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3" />
+                <RadioButton android:id="@+id/p4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="4" />
+                <RadioButton android:id="@+id/p5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="5" />
+            </RadioGroup>
+
+            <!-- Comments -->
+            <EditText
+                android:id="@+id/commentsInput"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:hint="Additional comments (optional)"
+                android:gravity="top|start"
+                android:padding="12dp"
+                android:background="@android:drawable/editbox_background"
+                android:layout_marginBottom="24dp"
+                android:inputType="textMultiLine" />
+
+            <!-- Submit Button -->
+            <Button
+                android:id="@+id/submitButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Submit"
+                android:backgroundTint="#4CAF50"
+                android:textColor="#FFFFFF"
+                android:paddingLeft="24dp"
+                android:paddingRight="24dp" />
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ────── Floating History button ────── -->
+    <TextView
+        android:id="@+id/history_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="History"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/white"
+        android:padding="10dp"
+        android:background="@android:color/holo_blue_dark"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:visibility="gone" />
+</FrameLayout>
