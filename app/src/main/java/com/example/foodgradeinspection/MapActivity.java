@@ -62,6 +62,7 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
     private ImageButton filterButton, refreshButton;
 
     private String currentFilter = "open";
+    private boolean isTaskBeingProcessed = false; // Flag to prevent multiple clicks
     /* ------------------------------------------------------------------ */
 
     @Override
@@ -259,15 +260,30 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
 
     /* ---------------- Task card click → pan + open --------------------- */
     private void onTaskClicked(Task task) {
-        if (mMap == null) { openInspectionForm(task); return; }
+        // Prevent multiple clicks
+        if (isTaskBeingProcessed) {
+            return;
+        }
+        isTaskBeingProcessed = true;
+
+        if (mMap == null) {
+            openInspectionForm(task);
+            return;
+        }
 
         String locId = task.getLocationId();
-        if (locId == null || locId.isEmpty()) { openInspectionForm(task); return; }
+        if (locId == null || locId.isEmpty()) {
+            openInspectionForm(task);
+            return;
+        }
 
         db.collection("locations").document(locId).get()
                 .addOnSuccessListener(l -> {
                     Double lat = l.getDouble("lat"), lng = l.getDouble("lng");
-                    if (lat == null || lng == null) { openInspectionForm(task); return; }
+                    if (lat == null || lng == null) {
+                        openInspectionForm(task);
+                        return;
+                    }
 
                     LatLng tgt = new LatLng(lat, lng);
                     mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(tgt, 16f), 1000,
@@ -289,6 +305,9 @@ public class MapActivity extends AppCompatActivity implements OnMapReadyCallback
         i.putExtra("taskId", task.getId());
         i.putExtra("locationId", task.getLocationId());
         startActivity(i);
+
+        // Reset the flag after starting the activity
+        isTaskBeingProcessed = false;
     }
 
     /* ---------------- Drawing custom grade marker ---------------------- */

@@ -6,22 +6,25 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="24dp"
-    android:gravity="center"
+    android:gravity="center_horizontal"
     tools:context=".LoginActivity">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Food Grade Inspection"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="32dp"/>
+    <ImageView
+        android:layout_width="320dp"
+        android:layout_height="280dp"
+        android:src="@drawable/safebite"
+        android:layout_marginTop="40dp"
+        android:layout_marginBottom="32dp"
+        android:contentDescription="SafeBite Logo"
+        android:scaleType="centerInside"/>
 
     <com.google.android.material.textfield.TextInputLayout
         android:id="@+id/emailLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
+        app:boxStrokeColor="@android:color/holo_blue_light"
+        app:hintTextColor="@android:color/holo_blue_light"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -38,6 +41,8 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"
         app:passwordToggleEnabled="true"
+        app:boxStrokeColor="@android:color/holo_blue_light"
+        app:hintTextColor="@android:color/holo_blue_light"
         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
 
         <com.google.android.material.textfield.TextInputEditText
@@ -53,15 +58,9 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Login"
+        android:backgroundTint="@android:color/holo_blue_light"
         android:padding="12dp"/>
 
-    <TextView
-        android:id="@+id/createAccountText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Don't have an account? Sign Up"
-        android:textColor="@color/design_default_color_primary"
-        android:layout_marginTop="16dp"/>
 
     <ProgressBar
         android:id="@+id/progressBar"

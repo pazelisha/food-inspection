@@ -28,11 +28,6 @@ public class LoginActivity extends AppCompatActivity {
         // Set up login button click listener
         binding.loginButton.setOnClickListener(v -> loginUser());
 
-        // Set up sign up text click listener
-        binding.createAccountText.setOnClickListener(v -> {
-            // You can implement sign up activity navigation here
-            Toast.makeText(LoginActivity.this, "Sign up clicked", Toast.LENGTH_SHORT).show();
-        });
     }
 
     @Override
